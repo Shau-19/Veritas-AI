@@ -1,0 +1,93 @@
+# ==========================================
+# VeritasAI / finetune-platform Root Gitignore
+# ==========================================
+
+# --- Python / Backend ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environments
+# Exclude the 'platform' folder since it holds the local Python virtual env
+platform/
+.venv/
+venv/
+ENV/
+env/
+venv.bak/
+env.bak/
+
+# Testing & Coverage
+.cache/
+.pytest_cache/
+.coverage
+.coverage.*
+.hypothesis/
+htmlcov/
+pytestdebug.log
+
+# Temporary / Scratch Files
+backend/scratch/
+scratch/
+*.jsonl
+
+# --- Node / Frontend ---
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Next.js Build Output
+.next/
+out/
+build/
+.vercel
+*.tsbuildinfo
+
+# --- Environment & Configuration Secrets ---
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.pem
+*.key
+
+# --- IDEs & Editors ---
+.vscode/
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+*.swo
+
+# --- OS-specific ---
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+ehthumbs.db
+Desktop.ini
