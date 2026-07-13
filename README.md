@@ -11,35 +11,35 @@ VeritasAI decouples the stateless FastAPI gateway from dynamic compute resources
 ```mermaid
 graph TB
     %% Client Tier
-    subgraph Client Tier [Next.js SPA Client]
-        UI[Brutalist UI App]
+    subgraph ClientTier ["Next.js SPA Client"]
+        UI["Brutalist UI App"]
     end
 
     %% API Tier
-    subgraph Gateway Tier [FastAPI Gateway]
-        GW[APIRouter]
-        Auth[JWT Security]
-        HMAC[HMAC Callback Validator]
-        DB[(PostgreSQL DB)]
+    subgraph GatewayTier ["FastAPI Gateway"]
+        GW["APIRouter"]
+        Auth["JWT Security"]
+        HMAC["HMAC Callback Validator"]
+        DB[("PostgreSQL DB")]
     end
 
     %% Broker Tier
-    subgraph Broker Tier [Redis Message Queue]
+    subgraph BrokerTier ["Redis Message Queue"]
         Broker((Celery Broker))
     end
 
     %% Compute Tier
-    subgraph Compute Worker Tier [Celery Worker Cluster]
-        Worker[Celery Task Consumer]
-        Local[Local Subprocess Trainer]
-        Cloud[RunPod GPU Provisioner]
-        Colab[Colab SSH Tunnel Trainer]
+    subgraph ComputeWorkerTier ["Celery Worker Cluster"]
+        Worker["Celery Task Consumer"]
+        Local["Local Subprocess Trainer"]
+        Cloud["RunPod GPU Provisioner"]
+        Colab["Colab SSH Tunnel Trainer"]
     end
 
     %% GPU Node Tier
-    subgraph Ephemeral GPU Node
-        US[Unsloth GPU PEFT Engine]
-        Script[training_script.py]
+    subgraph EphemeralGPUNode ["Ephemeral GPU Node"]
+        US["Unsloth GPU PEFT Engine"]
+        Script["training_script.py"]
     end
 
     %% Data Flows
@@ -48,7 +48,7 @@ graph TB
     GW --->|3. Dispatch Async Job| Broker
     Broker <--->|4. Fetch task| Worker
     Worker -->|5. Strategy Pattern Select| Local & Cloud & Colab
-    Cloud --->|6. Provision Ephemeral Pod| Ephemeral GPU Node
+    Cloud --->|6. Provision Ephemeral Pod| EphemeralGPUNode
     Script --->|7. HTTP callback + HMAC Token| HMAC
 ```
 
