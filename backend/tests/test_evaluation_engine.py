@@ -124,6 +124,9 @@ async def test_evaluate_model_pipeline():
     ]
     
     with patch("app.services.evaluator.AsyncSessionLocal", return_value=mock_session), \
+         patch("app.services.evaluator.generate_mock_responses", AsyncMock(return_value=("Base response", "Gold response", 100, 50))), \
+         patch("app.services.evaluator.grade_with_llm_judge", AsyncMock(return_value=(3.5, 4.5, "Mocked judge explanation"))), \
+         patch("app.services.evaluator.calculate_semantic_similarity", AsyncMock(return_value=0.85)), \
          patch("asyncio.sleep", AsyncMock()): # fast execution
          
         res = await evaluate_model(eval_job_id)
