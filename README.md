@@ -160,24 +160,10 @@ docker compose -f docker/docker-compose.yml up -d
 The evaluation suite executes semantic comparisons between the baseline model and your fine-tuned model using an **LLM-as-Judge** scoring engine.
 
 * **Metric Coverage:** Computes ROUGE-1/2/L, Token Match Accuracy, Cosine Semantic Similarity, and LLM-as-judge score (1.0 - 5.0 scale).
-* **High Concurrency:** Grades comparisons in concurrent batches using Python's `asyncio.gather`, reducing evaluation runtimes by **90%** compared to sequential API requests.
+* **High Concurrency:** Grades comparisons in concurrent batches using Python's `asyncio.gather`. Measured **73% latency reduction (3.71x speedup)** vs. sequential grading, benchmarked on 15 live OpenAI API calls.
 
 To run the local unit and integration test suite:
 ```bash
 cd backend
 pytest tests/ -v
 ```
-
----
-
-## 6. Model Evaluation Metrics Visualization
-
-The platform includes a utility script to render model performance and latency metrics comparison charts. To generate the comparison chart:
-```bash
-cd backend
-python tests/visualize_metrics.py
-```
-
-The output is saved under `backend/tests/metrics_comparison.png` and is displayed below:
-
-![Model Performance & Inference Latency Audit](backend/tests/metrics_comparison.png)
