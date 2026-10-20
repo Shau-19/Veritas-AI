@@ -64,6 +64,7 @@ class GenerateRequest(BaseModel):
     multi_turn: bool = False
     openai_api_key: Optional[str] = None
     deepseek_api_key: Optional[str] = None
+    groq_api_key: Optional[str] = None
 
 
 class PreviewRequest(BaseModel):
@@ -74,6 +75,7 @@ class PreviewRequest(BaseModel):
     multi_turn: bool = False
     openai_api_key: Optional[str] = None
     deepseek_api_key: Optional[str] = None
+    groq_api_key: Optional[str] = None
 
 
 @router.post("/preview")
@@ -86,6 +88,7 @@ async def preview_dataset(body: PreviewRequest, user_id: str = Depends(get_curre
         multi_turn=body.multi_turn,
         openai_api_key=body.openai_api_key,
         deepseek_api_key=body.deepseek_api_key,
+        groq_api_key=body.groq_api_key,
     ):
         if event["event"] == "complete":
             rows_collected = event.get("rows", [])
@@ -204,8 +207,9 @@ async def generate_and_save_stream(
     db: AsyncSession = Depends(get_db),
 ):
     has_custom_keys = bool(
-        body.openai_api_key or 
-        body.deepseek_api_key or 
+        body.openai_api_key or
+        body.deepseek_api_key or
+        body.groq_api_key or
         request.headers.get("x-key-configured") == "true"
     )
     if not has_custom_keys:
@@ -257,6 +261,7 @@ async def generate_and_save_stream(
                     multi_turn=body.multi_turn,
                     openai_api_key=body.openai_api_key,
                     deepseek_api_key=body.deepseek_api_key,
+                    groq_api_key=body.groq_api_key,
                 ):
                     if event.get("event") == "complete":
                         all_rows = event.get("rows", [])

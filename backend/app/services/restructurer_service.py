@@ -220,3 +220,141 @@ async def restructure_chunks_to_pairs(
     logger.info(f"[Restructurer] Completed: {len(all_pairs)} pairs from {len(chunks)} chunks")
     return all_pairs
 
+
+TABULAR_EXTRACTION_SYSTEM_PROMPT = """You are an expert data extraction assistant. Your task is to extract structured tabular information from the provided source text based on a specified list of columns.
+
+STRICT RULES:
+1. Extract ONLY facts, entities, and rows explicitly mentioned in the source text. Do not make up, extrapolate, or hallucinate any data.
+2. If a column value is not mentioned in the text for a given entity, leave it as null (None).
+3. Ensure every row is internally consistent and reflects the source text accurately.
+4. Ensure the output matches the requested column types (string, int, float, boolean, category).
+
+Return ONLY a JSON object with key "rows" containing an array of objects.
+Each object must have exactly the columns specified. No extra keys.
+"""
+
+def _build_tabular_extraction_prompt(chunk: str, columns: list[dict]) -> str:
+    col_spec = json.dumps(columns, indent=2)
+    return f"""Read the following source text and extract all entities/rows that match the specified column schema.
+
+COLUMN SPECIFICATIONS:
+{col_spec}
+
+SOURCE TEXT:
+\"\"\"
+{chunk}
+\"\"\"
+
+Return a JSON object: {{"rows": [{{col1: val1, col2: val2, ...}}, ...]}}"""
+
+
+async def extract_tabular_from_chunks(
+    chunks: list[str],
+    columns: list[dict],
+    openai_api_key: str = None,
+    deepseek_api_key: str = None,
+    call_timeout: float = 60.0,
+    max_concurrency: int = 15,
+    on_progress = None,
+) -> list[dict]:
+    """
+    Extract structured rows from raw text chunks using an LLM.
+    Supports BYOK mode using openai_api_key and deepseek_api_key.
+    """
+    if not chunks:
+        return []
+
+    import time
+    start_time = time.time()
+
+    from app.services.llm_client import get_llm_client
+    client, synthesis_model = get_llm_client(openai_api_key, deepseek_api_key)
+    all_rows: list[dict] = []
+
+    sem = asyncio.Semaphore(max_concurrency)
+    completed_chunks = 0
+    progress_lock = asyncio.Lock()
+
+    async def process_chunk(i: int, chunk: str) -> list[dict]:
+        nonlocal completed_chunks
+        chunk = chunk.strip()
+        if len(chunk) < 80:
+            async with progress_lock:
+                completed_chunks += 1
+            return []
+
+        prompt = _build_tabular_extraction_prompt(chunk, columns)
+        chunk_rows = []
+
+        async with sem:
+            for attempt in range(2):
+                try:
+                    kwargs = {
+                        "model": synthesis_model,
+                        "messages": [
+                            {"role": "system", "content": TABULAR_EXTRACTION_SYSTEM_PROMPT},
+                            {"role": "user", "content": prompt},
+                        ],
+                        "temperature": 0.1,  # Low temperature for precise factual extraction
+                        "max_tokens": 2000,
+                    }
+                    if synthesis_model != "deepseek-chat":
+                        kwargs["response_format"] = {"type": "json_object"}
+
+                    response = await asyncio.wait_for(
+                        client.chat.completions.create(**kwargs),
+                        timeout=call_timeout,
+                    )
+                    try:
+                        client._client.cookies.clear()
+                    except Exception:
+                        pass
+
+                    content = response.choices[0].message.content
+                    from app.services.dataset_generator import robust_json_loads
+                    parsed = robust_json_loads(content)
+
+                    if isinstance(parsed, dict) and "rows" in parsed:
+                        chunk_rows = parsed["rows"]
+                    elif isinstance(parsed, list):
+                        chunk_rows = parsed
+                    else:
+                        chunk_rows = next((v for v in parsed.values() if isinstance(v, list)), [])
+
+                    async with progress_lock:
+                        completed_chunks += 1
+                        elapsed = time.time() - start_time
+                        if on_progress:
+                            await on_progress(
+                                chunk_idx=i,
+                                completed_chunks=completed_chunks,
+                                num_rows=len(chunk_rows),
+                                total_rows_so_far=len(all_rows) + len(chunk_rows),
+                                elapsed=elapsed
+                            )
+
+                    break  # success
+
+                except asyncio.TimeoutError:
+                    if attempt == 0:
+                        logger.warning(f"[TabularExtractor] Chunk {i} timed out (attempt 1). Retrying...")
+                        continue
+                    else:
+                        logger.error(f"[TabularExtractor] Chunk {i} timed out on retry. Skipping.")
+                except Exception as e:
+                    logger.error(f"[TabularExtractor] Chunk {i} failed: {e}")
+                    break  # non-timeout error — skip this chunk
+
+        return chunk_rows
+
+    # Execute all chunks concurrently
+    tasks = [process_chunk(i, chunk) for i, chunk in enumerate(chunks)]
+    results = await asyncio.gather(*tasks)
+
+    # Flatten results
+    for chunk_rows in results:
+        all_rows.extend(chunk_rows)
+
+    logger.info(f"[TabularExtractor] Completed: Extracted {len(all_rows)} rows from {len(chunks)} chunks")
+    return all_rows
+

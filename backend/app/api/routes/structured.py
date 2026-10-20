@@ -69,6 +69,7 @@ class StructuredGenerateRequest(BaseModel):
     label_noise_rate: float = 0.0
     openai_api_key: Optional[str] = None
     deepseek_api_key: Optional[str] = None
+    groq_api_key: Optional[str] = None
 
 
 class SchemaRequest(BaseModel):
@@ -149,8 +150,9 @@ async def generate_structured(
 ):
     """Generate a multi-column structured/tabular dataset."""
     has_custom_keys = bool(
-        body.openai_api_key or 
-        body.deepseek_api_key or 
+        body.openai_api_key or
+        body.deepseek_api_key or
+        body.groq_api_key or
         request.headers.get("x-key-configured") == "true"
     )
     if not has_custom_keys:
@@ -187,6 +189,7 @@ async def generate_structured(
         label_noise_rate=body.label_noise_rate,
         openai_api_key=body.openai_api_key,
         deepseek_api_key=body.deepseek_api_key,
+        groq_api_key=body.groq_api_key,
     ):
         if event["event"] == "complete":
             all_rows = event.get("rows", [])
@@ -255,8 +258,9 @@ async def generate_structured_stream_route(
     db: AsyncSession = Depends(get_db),
 ):
     has_custom_keys = bool(
-        body.openai_api_key or 
-        body.deepseek_api_key or 
+        body.openai_api_key or
+        body.deepseek_api_key or
+        body.groq_api_key or
         request.headers.get("x-key-configured") == "true"
     )
     if not has_custom_keys:
@@ -295,6 +299,7 @@ async def generate_structured_stream_route(
                 label_noise_rate=body.label_noise_rate,
                 openai_api_key=body.openai_api_key,
                 deepseek_api_key=body.deepseek_api_key,
+                groq_api_key=body.groq_api_key,
             ):
                 if event.get("event") == "complete":
                     all_rows = event.get("rows", [])

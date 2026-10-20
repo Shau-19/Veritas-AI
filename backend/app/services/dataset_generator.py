@@ -759,6 +759,7 @@ async def generate_dataset_stream(
     multi_turn: bool = False,
     openai_api_key: Optional[str] = None,
     deepseek_api_key: Optional[str] = None,
+    groq_api_key: Optional[str] = None,
 ) -> AsyncGenerator[dict, None]:
     """
     Stream dataset generation in batches.
@@ -899,7 +900,7 @@ async def generate_dataset_stream(
                 client = get_openai_client(openai_api_key)
                 synthesis_model = "gpt-4o-mini"
             else:
-                client, synthesis_model = get_llm_client(openai_api_key, deepseek_api_key)
+                client, synthesis_model = get_llm_client(openai_api_key, deepseek_api_key, groq_api_key)
             if synthesis_model == "gpt-4o-mini" and not settings.deepseek_api_key and not deepseek_api_key:
                 # DeepSeek not configured, just use OpenAI directly
                 pass
