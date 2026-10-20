@@ -1575,7 +1575,7 @@ function ScrapeTab({ accent }: { accent: string }) {
       {/* Left — form */}
       <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
         <div style={{ background: "rgba(59,130,246,0.08)", border: "2px solid #3b82f6", borderRadius: 10, padding: "10px 14px", fontSize: 12, color: "#93c5fd", lineHeight: 1.6 }}>
-          📡 Enter any webpage URL or sitemap URL. We'll extract the text, then use AI to convert it into clean {"{"}input, output{"}"}  training pairs.
+          📡 Enter any webpage URL or sitemap URL. We'll extract the text, then use AI to convert it into clean QA pairs or structured tables based on your columns.
         </div>
         <div>
           <label style={{ display: "block", fontFamily: "'Comic Neue', cursive", fontSize: 14, fontWeight: "bold", color: "#ffffff", marginBottom: 8 }}>URL(s) to scrape <span style={{ color: accent }}>*</span></label>
@@ -1585,39 +1585,189 @@ function ScrapeTab({ accent }: { accent: string }) {
             placeholder="Enter URL(s), one per line or comma-separated:&#10;https://docs.yourproduct.com&#10;https://yoursite.com/sitemap.xml"
             disabled={loading}
             rows={4}
-            style={{ width: "100%", padding: "12px 16px", outline: "none", resize: "vertical", minHeight: "100px", fontFamily: "'JetBrains Mono', monospace", fontSize: 12 }}
+            style={{ width: "100%", padding: "12px 16px", outline: "none", resize: "none", minHeight: "100px", fontFamily: "'JetBrains Mono', monospace", fontSize: 12 }}
             className="vt-input"
           />
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-          <div>
-            <label style={{ display: "block", fontFamily: "'Comic Neue', cursive", fontSize: 14, fontWeight: "bold", color: "#ffffff", marginBottom: 8 }}>Task Type</label>
-            <select value={form.task_type} onChange={e => setForm({ ...form, task_type: e.target.value })} disabled={loading} style={{ width: "100%", padding: "12px 16px", outline: "none", cursor: "pointer" }} className="vt-input">
-              {TASK_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-            </select>
-          </div>
-          <div>
-            <label style={{ display: "block", fontFamily: "'Comic Neue', cursive", fontSize: 14, fontWeight: "bold", color: "#ffffff", marginBottom: 8 }}>Style</label>
-            <select value={form.style} onChange={e => setForm({ ...form, style: e.target.value })} disabled={loading} style={{ width: "100%", padding: "12px 16px", outline: "none", cursor: "pointer" }} className="vt-input">
-              {STYLES.map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
-          </div>
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-          <div>
-            <label style={{ display: "block", fontFamily: "'Comic Neue', cursive", fontSize: 14, fontWeight: "bold", color: "#ffffff", marginBottom: 8 }}>Max Pages: <span style={{ color: accent }}>{form.max_pages}</span></label>
-            <input type="range" min={1} max={50} value={form.max_pages} disabled={loading} onChange={e => setForm({ ...form, max_pages: parseInt(e.target.value) })} style={{ width: "100%", accentColor: accent }} />
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "#a0a5c0", fontFamily: "'JetBrains Mono', monospace", marginTop: 4 }}><span>1</span><span>50</span></div>
-          </div>
-          <div>
-            <label style={{ display: "block", fontFamily: "'Comic Neue', cursive", fontSize: 14, fontWeight: "bold", color: "#ffffff", marginBottom: 8 }}>Pairs per chunk: <span style={{ color: accent }}>{form.pairs_per_chunk}</span></label>
-            <input type="range" min={1} max={10} value={form.pairs_per_chunk} disabled={loading} onChange={e => setForm({ ...form, pairs_per_chunk: parseInt(e.target.value) })} style={{ width: "100%", accentColor: accent }} />
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "#a0a5c0", fontFamily: "'JetBrains Mono', monospace", marginTop: 4 }}><span>1</span><span>10</span></div>
-          </div>
-        </div>
+
+        {/* Dataset Type Selector */}
         <div>
-          <label style={{ display: "block", fontFamily: "'Comic Neue', cursive", fontSize: 14, fontWeight: "bold", color: "#ffffff", marginBottom: 8 }}>Dataset Name</label>
-          <input type="text" value={form.dataset_name} onChange={e => setForm({ ...form, dataset_name: e.target.value })} disabled={loading} placeholder={form.url ? `Scraped: ${form.url.slice(0, 30)}...` : "My scraped dataset"} style={{ width: "100%", padding: "12px 16px", outline: "none" }} className="vt-input" />
+          <label style={{ display: "block", fontFamily: "'Comic Neue', cursive", fontSize: 14, fontWeight: "bold", color: "#ffffff", marginBottom: 8 }}>Dataset Type</label>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, background: "#0c0d12", border: "2px solid #000000", boxShadow: "2px 2px 0px 0px #000000", borderRadius: 8, padding: 4 }}>
+            <button
+              onClick={() => setForm({ ...form, dataset_type: "conversational" })}
+              disabled={loading}
+              style={{
+                padding: "8px 12px",
+                fontFamily: "'Comic Neue', cursive",
+                fontSize: 12,
+                fontWeight: "bold",
+                background: form.dataset_type === "conversational" ? accent : "transparent",
+                color: form.dataset_type === "conversational" ? "#000000" : "#a0a5c0",
+                border: "none",
+                borderRadius: 6,
+                cursor: "pointer",
+                transition: "all 0.2s"
+              }}
+            >
+              💬 Conversational (Q&A)
+            </button>
+            <button
+              onClick={() => setForm({ ...form, dataset_type: "tabular" })}
+              disabled={loading}
+              style={{
+                padding: "8px 12px",
+                fontFamily: "'Comic Neue', cursive",
+                fontSize: 12,
+                fontWeight: "bold",
+                background: form.dataset_type === "tabular" ? accent : "transparent",
+                color: form.dataset_type === "tabular" ? "#000000" : "#a0a5c0",
+                border: "none",
+                borderRadius: 6,
+                cursor: "pointer",
+                transition: "all 0.2s"
+              }}
+            >
+              📊 Tabular (Structured)
+            </button>
+          </div>
+        </div>
+
+        {form.dataset_type === "tabular" ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 12, border: "2px dashed #3b82f6", borderRadius: 8, padding: 14, background: "rgba(59,130,246,0.02)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <label style={{ fontFamily: "'Comic Neue', cursive", fontSize: 14, fontWeight: "bold", color: "#ffffff" }}>
+                Target Columns Schema
+              </label>
+              <button
+                onClick={() => {
+                  const updatedCols = [...(form.columns || [])];
+                  updatedCols.push({ name: "", type: "string", description: "" });
+                  setForm({ ...form, columns: updatedCols });
+                }}
+                disabled={loading}
+                className="btn-primary"
+                style={{ padding: "4px 10px", fontSize: 10 }}
+              >
+                + Add Column
+              </button>
+            </div>
+            
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: 200, overflowY: "auto", paddingRight: 4 }}>
+              {(form.columns || []).map((col: any, idx: number) => (
+                <div key={idx} style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr 1.5fr auto", gap: 8, alignItems: "center" }}>
+                  <input
+                    type="text"
+                    value={col.name}
+                    placeholder="col_name"
+                    onChange={(e) => {
+                      const updatedCols = [...form.columns];
+                      updatedCols[idx] = { ...updatedCols[idx], name: e.target.value };
+                      setForm({ ...form, columns: updatedCols });
+                    }}
+                    style={{ padding: "6px 10px", fontSize: 11 }}
+                    className="vt-input"
+                    disabled={loading}
+                  />
+                  <select
+                    value={col.type}
+                    onChange={(e) => {
+                      const updatedCols = [...form.columns];
+                      updatedCols[idx] = { ...updatedCols[idx], type: e.target.value };
+                      setForm({ ...form, columns: updatedCols });
+                    }}
+                    style={{ padding: "6px 10px", fontSize: 11 }}
+                    className="vt-input"
+                    disabled={loading}
+                  >
+                    {["string", "int", "float", "boolean", "category"].map((t) => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
+                  </select>
+                  <input
+                    type="text"
+                    value={col.description || ""}
+                    placeholder="Description / hint"
+                    onChange={(e) => {
+                      const updatedCols = [...form.columns];
+                      updatedCols[idx] = { ...updatedCols[idx], description: e.target.value };
+                      setForm({ ...form, columns: updatedCols });
+                    }}
+                    style={{ padding: "6px 10px", fontSize: 11 }}
+                    className="vt-input"
+                    disabled={loading}
+                  />
+                  <button
+                    onClick={() => {
+                      const updatedCols = form.columns.filter((_: any, i: number) => i !== idx);
+                      setForm({ ...form, columns: updatedCols });
+                    }}
+                    disabled={loading || form.columns.length <= 1}
+                    style={{
+                      background: "#f43f5e",
+                      color: "#ffffff",
+                      border: "2px solid #000000",
+                      boxShadow: "1px 1px 0px 0px #000000",
+                      borderRadius: 6,
+                      width: 26,
+                      height: 26,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      cursor: "pointer",
+                      fontSize: 12,
+                      fontWeight: "bold",
+                    }}
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+              <div>
+                <label style={{ display: "block", fontFamily: "'Comic Neue', cursive", fontSize: 14, fontWeight: "bold", color: "#ffffff", marginBottom: 8 }}>Task Type</label>
+                <select value={form.task_type} onChange={e => setForm({ ...form, task_type: e.target.value })} disabled={loading} style={{ width: "100%", padding: "12px 16px", outline: "none", cursor: "pointer" }} className="vt-input">
+                  {TASK_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={{ display: "block", fontFamily: "'Comic Neue', cursive", fontSize: 14, fontWeight: "bold", color: "#ffffff", marginBottom: 8 }}>Style</label>
+                <select value={form.style} onChange={e => setForm({ ...form, style: e.target.value })} disabled={loading} style={{ width: "100%", padding: "12px 16px", outline: "none", cursor: "pointer" }} className="vt-input">
+                  {STYLES.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+              <div>
+                <label style={{ display: "block", fontFamily: "'Comic Neue', cursive", fontSize: 14, fontWeight: "bold", color: "#ffffff", marginBottom: 8 }}>Max Pages: <span style={{ color: accent }}>{form.max_pages}</span></label>
+                <input type="range" min={1} max={50} value={form.max_pages} disabled={loading} onChange={e => setForm({ ...form, max_pages: parseInt(e.target.value) })} style={{ width: "100%", accentColor: accent }} />
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "#a0a5c0", fontFamily: "'JetBrains Mono', monospace", marginTop: 4 }}><span>1</span><span>50</span></div>
+              </div>
+              <div>
+                <label style={{ display: "block", fontFamily: "'Comic Neue', cursive", fontSize: 14, fontWeight: "bold", color: "#ffffff", marginBottom: 8 }}>Pairs per chunk: <span style={{ color: accent }}>{form.pairs_per_chunk}</span></label>
+                <input type="range" min={1} max={10} value={form.pairs_per_chunk} disabled={loading} onChange={e => setForm({ ...form, pairs_per_chunk: parseInt(e.target.value) })} style={{ width: "100%", accentColor: accent }} />
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "#a0a5c0", fontFamily: "'JetBrains Mono', monospace", marginTop: 4 }}><span>1</span><span>10</span></div>
+              </div>
+            </div>
+          </>
+        )}
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, alignItems: "center" }}>
+          <div>
+            <label style={{ display: "block", fontFamily: "'Comic Neue', cursive", fontSize: 14, fontWeight: "bold", color: "#ffffff", marginBottom: 8 }}>Dataset Name</label>
+            <input type="text" value={form.dataset_name} onChange={e => setForm({ ...form, dataset_name: e.target.value })} disabled={loading} placeholder={form.url ? `Scraped: ${form.url.slice(0, 30)}...` : "My scraped dataset"} style={{ width: "100%", padding: "12px 16px", outline: "none" }} className="vt-input" />
+          </div>
+          {form.dataset_type === "tabular" && (
+            <div>
+              <label style={{ display: "block", fontFamily: "'Comic Neue', cursive", fontSize: 14, fontWeight: "bold", color: "#ffffff", marginBottom: 8 }}>Max Pages: <span style={{ color: accent }}>{form.max_pages}</span></label>
+              <input type="range" min={1} max={50} value={form.max_pages} disabled={loading} onChange={e => setForm({ ...form, max_pages: parseInt(e.target.value) })} style={{ width: "100%", accentColor: accent }} />
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "#a0a5c0", fontFamily: "'JetBrains Mono', monospace", marginTop: 4 }}><span>1</span><span>50</span></div>
+            </div>
+          )}
         </div>
         {error && (<div style={{ fontSize: 12, color: "#ffffff", background: "#f43f5e", border: "3px solid #000000", boxShadow: "2px 2px 0px 0px #000000", padding: "10px 14px", borderRadius: "8px", fontFamily: "'JetBrains Mono', monospace" }}>{error}</div>)}
         <button onClick={handleScrape} disabled={loading || !form.url.trim()} className="btn-primary" style={{ padding: "12px 24px" }}>

@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { api, auth, keyStore, decryptApiKey } from "@/lib/api";
+import Script from "next/script";
 
 const STATUS_STYLES: Record<string, string> = {
   queued: "bg-zinc-800 text-zinc-400 border-zinc-700",
@@ -733,9 +734,19 @@ function EvaluatePage() {
                   </p>
                 </div>
               ) : playgroundLoading ? (
-                <div className="bg-[#12131c] border border-zinc-800 rounded-xl p-8 shadow-[4px_4px_0px_0px_#000] min-h-[400px] flex flex-col gap-6 justify-center">
+                <div className="bg-[#12131c] border border-zinc-800 rounded-xl p-8 shadow-[4px_4px_0px_0px_#000] min-h-[400px] flex flex-col gap-6 justify-center items-center">
                   <div className="space-y-2 text-center">
-                    <div className="w-12 h-12 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+                    <div style={{ width: 140, height: 140, margin: "0 auto" }}>
+                      {/* @ts-ignore */}
+                      <lottie-player
+                        src="/cooking.json"
+                        background="transparent"
+                        speed="1.2"
+                        style={{ width: "100%", height: "100%" }}
+                        loop
+                        autoplay
+                      />
+                    </div>
                     <p className="text-sm text-text font-display font-bold uppercase tracking-wider animate-pulse">
                       Running Inference Comparison...
                     </p>
@@ -1238,6 +1249,7 @@ function EvaluatePage() {
           onCreated={handleCreated}
         />
       )}
+      <Script src="https://unpkg.com/@lottiefiles/lottie-player@latest/dist/lottie-player.js" strategy="lazyOnload" />
     </div>
   );
 }

@@ -50,6 +50,9 @@ export default function Dashboard() {
   const router = useRouter();
   const [datasets, setDatasets] = useState<any[]>([]);
   const [jobs, setJobs] = useState<any[]>([]);
+  const [evaluations, setEvaluations] = useState<any[]>([]);
+  const [dashboardTab, setDashboardTab] = useState<"overview" | "lineage" | "admin">("overview");
+  const [adminStats, setAdminStats] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [accent, setAccent] = useState("#ff5c36");
@@ -122,8 +125,23 @@ export default function Dashboard() {
   const fetchData = useCallback(async () => {
     setError("");
     try {
-      const [d, j] = await Promise.all([api.listDatasets(), api.listJobs()]);
-      setDatasets(d); setJobs(j);
+      const [d, j, e] = await Promise.all([
+        api.listDatasets(),
+        api.listJobs(),
+        api.listEvaluations().catch(() => [])
+      ]);
+      setDatasets(d);
+      setJobs(j);
+      setEvaluations(e);
+
+      if (auth.isAdmin()) {
+        try {
+          const aStats = await api.getAdminStats();
+          setAdminStats(aStats);
+        } catch (err) {
+          console.error("Failed to load admin stats:", err);
+        }
+      }
     } catch (err: any) {
       setError(err.message || "Failed to load dashboard data");
     }
@@ -171,6 +189,63 @@ export default function Dashboard() {
           </div>
         </div>
 
+        {/* Tab Switcher */}
+        <div style={{ display: "flex", gap: 16, borderBottom: "2px solid #27293d", marginBottom: 24, paddingBottom: 8 }}>
+          <button
+            onClick={() => setDashboardTab("overview")}
+            style={{
+              background: "none",
+              border: "none",
+              fontFamily: "'Comic Neue', cursive",
+              fontSize: "14px",
+              fontWeight: "bold",
+              color: dashboardTab === "overview" ? accent : "#7a7f9a",
+              borderBottom: dashboardTab === "overview" ? `3px solid ${accent}` : "3px solid transparent",
+              padding: "4px 12px",
+              cursor: "pointer",
+              transition: "all 0.2s"
+            }}
+          >
+            📊 Activity Overview
+          </button>
+          <button
+            onClick={() => setDashboardTab("lineage")}
+            style={{
+              background: "none",
+              border: "none",
+              fontFamily: "'Comic Neue', cursive",
+              fontSize: "14px",
+              fontWeight: "bold",
+              color: dashboardTab === "lineage" ? accent : "#7a7f9a",
+              borderBottom: dashboardTab === "lineage" ? `3px solid ${accent}` : "3px solid transparent",
+              padding: "4px 12px",
+              cursor: "pointer",
+              transition: "all 0.2s"
+            }}
+          >
+            🔗 Traceability Lineage Map
+          </button>
+          {auth.isAdmin() && (
+            <button
+              onClick={() => setDashboardTab("admin")}
+              style={{
+                background: "none",
+                border: "none",
+                fontFamily: "'Comic Neue', cursive",
+                fontSize: "14px",
+                fontWeight: "bold",
+                color: dashboardTab === "admin" ? accent : "#7a7f9a",
+                borderBottom: dashboardTab === "admin" ? `3px solid ${accent}` : "3px solid transparent",
+                padding: "4px 12px",
+                cursor: "pointer",
+                transition: "all 0.2s"
+              }}
+            >
+              🔒 Admin Console
+            </button>
+          )}
+        </div>
+
         {error && (
           <div style={{
             fontSize: 12,
@@ -187,207 +262,92 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Main Grid */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(400px, 1fr))", gap: 32, marginBottom: 32 }}>
-          
-          {/* Datasets Column */}
-          <div>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-              <h2 style={{
-                fontFamily: "'Comic Neue', 'Comic Sans MS', cursive, sans-serif",
-                fontSize: "20px",
-                fontWeight: 900,
-                color: "#ffffff"
-              }}>
-                Datasets
-              </h2>
-              <div style={{ display: "flex", gap: 8 }}>
-                {datasets.length > 0 && (
-                  <button onClick={() => setShowAllModal(true)} className="btn-ghost" style={{
+        {dashboardTab === "overview" && (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(400px, 1fr))", gap: 32, marginBottom: 32 }}>
+            
+            {/* Datasets Column */}
+            <div>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+                <h2 style={{
+                  fontFamily: "'Comic Neue', 'Comic Sans MS', cursive, sans-serif",
+                  fontSize: "20px",
+                  fontWeight: 900,
+                  color: "#ffffff"
+                }}>
+                  Datasets
+                </h2>
+                <div style={{ display: "flex", gap: 8 }}>
+                  {datasets.length > 0 && (
+                    <button onClick={() => setShowAllModal(true)} className="btn-ghost" style={{
+                      padding: "4px 12px",
+                      fontSize: "10px",
+                    }}>
+                      View all ({datasets.length})
+                    </button>
+                  )}
+                  <Link href="/generate" className="btn-ghost" style={{
                     padding: "4px 12px",
                     fontSize: "10px",
-                    cursor: "pointer"
+                    textDecoration: "none"
                   }}>
-                    🔍 View all
-                  </button>
-                )}
-                <Link href="/generate" className="btn-ghost" style={{
-                  padding: "4px 12px",
-                  fontSize: "10px",
-                  textDecoration: "none"
-                }}>
-                  + New dataset
-                </Link>
+                    + Generate
+                  </Link>
+                </div>
               </div>
-            </div>
 
-            {loading ? Array(3).fill(0).map((_, i) => (
-              <div key={i} className="shimmer" style={{ height: 68, marginBottom: 12, border: "3px solid #000000", borderRadius: "8px" }} />
-            )) : datasets.length === 0 ? (
-              <div className="vt-card" style={{ padding: 40, textAlign: "center" }}>
-                <div style={{ fontSize: 32, marginBottom: 12 }}>🗂️</div>
-                <div style={{ fontFamily: "'Comic Neue', cursive", fontSize: 16, fontWeight: "bold", color: "#a0a5c0", marginBottom: 14 }}>No datasets yet</div>
-                <Link href="/generate" className="btn-primary" style={{
-                  textDecoration: "none",
-                  padding: "10px 20px",
-                  display: "inline-block",
-                  fontSize: 12
-                }}>
-                  Generate first dataset →
-                </Link>
-              </div>
-            ) : (
-              <>
-                {datasets.slice(0, 3).map(d => (
-                  <div key={d.id} className="vt-card" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 12, padding: "12px 16px" }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{
-                        fontSize: "14px",
-                        color: "#ffffff",
-                        fontFamily: "'Comic Neue', 'Comic Sans MS', cursive, sans-serif",
-                        fontWeight: "bold",
-                        marginBottom: 4,
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap"
-                      }}>
-                        {d.name}
+              {loading ? Array(3).fill(0).map((_, i) => (
+                <div key={i} className="shimmer" style={{ height: 68, marginBottom: 12, border: "3px solid #000000", borderRadius: "8px" }} />
+              )) : datasets.length === 0 ? (
+                <div className="vt-card" style={{ padding: 40, textAlign: "center" }}>
+                  <div style={{ fontSize: 32, marginBottom: 12 }}>📂</div>
+                  <div style={{ fontFamily: "'Comic Neue', cursive", fontSize: 16, fontWeight: "bold", color: "#a0a5c0", marginBottom: 14 }}>No datasets yet</div>
+                  <Link href="/generate" className="btn-primary" style={{
+                    textDecoration: "none",
+                    padding: "10px 20px",
+                    display: "inline-block",
+                    fontSize: 12
+                  }}>
+                    Create dataset →
+                  </Link>
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  {datasets.slice(0, 3).map(d => (
+                    <div key={d.id} className="vt-card" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "12px 16px" }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: "14px", color: "#ffffff", fontFamily: "'Comic Neue', cursive", fontWeight: "bold", marginBottom: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={d.name}>
+                          {d.name}
+                        </div>
+                        <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#a0a5c0" }}>
+                          {d.row_count?.toLocaleString()} rows · {d.file_format?.toUpperCase()}
+                          {d.quality_score && (
+                            <span style={{ color: scoreColor(d.quality_score), marginLeft: 8, fontWeight: "bold" }}>
+                              · {d.quality_score}% quality
+                            </span>
+                          )}
+                        </div>
                       </div>
-                      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#a0a5c0" }}>
-                        {d.row_count?.toLocaleString()} rows · {d.file_format?.toUpperCase()}
-                        {d.quality_score && (
-                          <span style={{ color: scoreColor(d.quality_score), marginLeft: 8, fontWeight: "bold" }}>
-                            · {d.quality_score}% quality
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-                      <Badge status={d.status} />
-                      <button onClick={() => handlePreviewDataset(d.id)}
-                        title="Preview"
-                        className="action-btn">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#a0a5c0" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                          <circle cx="11" cy="11" r="8"></circle>
-                          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                        </svg>
-                      </button>
-                      <button onClick={() => downloadCSV(d.id, d.name, token)}
-                        title="Download CSV"
-                        className="action-btn">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#a0a5c0" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                          <polyline points="7 10 12 15 17 10"></polyline>
-                          <line x1="12" y1="15" x2="12" y2="3"></line>
-                        </svg>
-                      </button>
-                      <button onClick={() => handleDeleteDataset(d.id)}
-                        title="Delete"
-                        className="action-btn action-btn-danger">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f43f5e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                          <polyline points="3 6 5 6 21 6"></polyline>
-                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                          <line x1="10" y1="11" x2="10" y2="17"></line>
-                          <line x1="14" y1="11" x2="14" y2="17"></line>
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-                ))}
-                {datasets.length > 3 && (
-                  <button onClick={() => setShowAllModal(true)} className="btn-ghost" style={{ width: "100%", padding: "10px", marginTop: 12, fontSize: 11 }}>
-                    View all {datasets.length} datasets →
-                  </button>
-                )}
-              </>
-            )}
-          </div>
-
-          {/* Training Jobs Column */}
-          <div>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-              <h2 style={{
-                fontFamily: "'Comic Neue', 'Comic Sans MS', cursive, sans-serif",
-                fontSize: "20px",
-                fontWeight: 900,
-                color: "#ffffff"
-              }}>
-                Training Jobs
-              </h2>
-              <div style={{ display: "flex", gap: 8 }}>
-                <Link href="/jobs" className="btn-ghost" style={{
-                  padding: "4px 12px",
-                  fontSize: "10px",
-                  textDecoration: "none"
-                }}>
-                  + Launch job
-                </Link>
-              </div>
-            </div>
-
-            {loading ? Array(3).fill(0).map((_, i) => (
-              <div key={i} className="shimmer" style={{ height: 68, marginBottom: 12, border: "3px solid #000000", borderRadius: "8px" }} />
-            )) : jobs.length === 0 ? (
-              <div className="vt-card" style={{ padding: 40, textAlign: "center" }}>
-                <div style={{ fontSize: 32, marginBottom: 12 }}>🧠</div>
-                <div style={{ fontFamily: "'Comic Neue', cursive", fontSize: 16, fontWeight: "bold", color: "#a0a5c0", marginBottom: 14 }}>No training jobs yet</div>
-                <Link href="/jobs" className="btn-primary" style={{
-                  textDecoration: "none",
-                  padding: "10px 20px",
-                  display: "inline-block",
-                  fontSize: 12
-                }}>
-                  Configure training →
-                </Link>
-              </div>
-            ) : (
-              <>
-                {jobs.slice(0, 3).map(j => (
-                  <div key={j.id} className="vt-card" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 12, padding: "12px 16px" }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{
-                        fontSize: "14px",
-                        color: "#ffffff",
-                        fontFamily: "'Comic Neue', 'Comic Sans MS', cursive, sans-serif",
-                        fontWeight: "bold",
-                        marginBottom: 4,
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap"
-                      }}>
-                        {j.base_model?.split("/").pop()}
-                      </div>
-                      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#a0a5c0" }}>
-                        {j.task_type} · {j.training_config?.epochs} epochs
-                        {j.actual_cost_usd != null && (
-                          <span style={{ color: "#10b981", marginLeft: 8, fontWeight: "bold" }}>
-                            · ${j.actual_cost_usd.toFixed(4)}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-                      <Badge status={j.status} />
-                      <button onClick={() => handlePreviewJob(j.id)}
-                        title="Preview Job & Model"
-                        className="action-btn">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#a0a5c0" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                          <circle cx="11" cy="11" r="8"></circle>
-                          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                        </svg>
-                      </button>
-                      {j.hf_model_id && (
-                        <a href={`https://huggingface.co/${j.hf_model_id}`} target="_blank" rel="noreferrer"
-                          title="Hugging Face Hub"
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                        <Badge status={d.status} />
+                        <button onClick={() => handlePreviewDataset(d.id)}
+                          title="Preview"
                           className="action-btn">
-                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22d3ee" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M12 2a10 10 0 0 0-10 10v4a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-4a2 2 0 0 0-2-2H4a8 8 0 0 1 16 0h-2a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-4A10 10 0 0 0 12 2z"></path>
+                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#a0a5c0" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                           </svg>
-                        </a>
-                      )}
-                      {j.status !== "training" && j.status !== "provisioning" && j.status !== "uploading" && (
-                        <button onClick={() => handleDeleteJob(j.id)}
-                          title="Delete Job"
+                        </button>
+                        <button onClick={() => downloadCSV(d.id, d.name, token)}
+                          title="Download"
+                          className="action-btn">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#a0a5c0" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="7 10 12 15 17 10"></polyline>
+                            <line x1="12" y1="15" x2="12" y2="3"></line>
+                          </svg>
+                        </button>
+                        <button onClick={() => handleDeleteDataset(d.id)}
+                          title="Delete"
                           className="action-btn action-btn-danger">
                           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f43f5e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                             <polyline points="3 6 5 6 21 6"></polyline>
@@ -396,20 +356,330 @@ export default function Dashboard() {
                             <line x1="14" y1="11" x2="14" y2="17"></line>
                           </svg>
                         </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Jobs Column */}
+            <div>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+                <h2 style={{
+                  fontFamily: "'Comic Neue', 'Comic Sans MS', cursive, sans-serif",
+                  fontSize: "20px",
+                  fontWeight: 900,
+                  color: "#ffffff"
+                }}>
+                  Training Jobs
+                </h2>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <Link href="/jobs" className="btn-ghost" style={{
+                    padding: "4px 12px",
+                    fontSize: "10px",
+                    textDecoration: "none"
+                  }}>
+                    + Launch job
+                  </Link>
+                </div>
+              </div>
+
+              {loading ? Array(3).fill(0).map((_, i) => (
+                <div key={i} className="shimmer" style={{ height: 68, marginBottom: 12, border: "3px solid #000000", borderRadius: "8px" }} />
+              )) : jobs.length === 0 ? (
+                <div className="vt-card" style={{ padding: 40, textAlign: "center" }}>
+                  <div style={{ fontSize: 32, marginBottom: 12 }}>🧠</div>
+                  <div style={{ fontFamily: "'Comic Neue', cursive", fontSize: 16, fontWeight: "bold", color: "#a0a5c0", marginBottom: 14 }}>No training jobs yet</div>
+                  <Link href="/jobs" className="btn-primary" style={{
+                    textDecoration: "none",
+                    padding: "10px 20px",
+                    display: "inline-block",
+                    fontSize: 12
+                  }}>
+                    Configure training →
+                  </Link>
+                </div>
+              ) : (
+                <>
+                  {jobs.slice(0, 3).map(j => (
+                    <div key={j.id} className="vt-card" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 12, padding: "12px 16px" }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{
+                          fontSize: "14px",
+                          color: "#ffffff",
+                          fontFamily: "'Comic Neue', 'Comic Sans MS', cursive, sans-serif",
+                          fontWeight: "bold",
+                          marginBottom: 4,
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap"
+                        }} title={j.base_model}>
+                          {j.base_model?.split("/").pop()}
+                        </div>
+                        <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#a0a5c0" }}>
+                          Job ID: {j.id.slice(0, 8)} · Epochs: {j.training_config?.epochs}
+                        </div>
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                        <Badge status={j.status} />
+                        <button onClick={() => handlePreviewJob(j.id)}
+                          title="Inspect Details"
+                          className="action-btn">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#a0a5c0" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                          </svg>
+                        </button>
+                        {j.status !== "failed" && j.status !== "completed" && j.status !== "cancelled" && (
+                          <button onClick={async () => {
+                            if (confirm("Cancel this training run?")) {
+                              try { await api.cancelJob(j.id); fetchData(); } catch (e: any) { alert(e.message); }
+                            }
+                          }}
+                            title="Cancel Job"
+                            className="action-btn action-btn-danger">
+                            <svg xmlns="http://www.w3.org/2005/Atom" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f43f5e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                              <circle cx="12" cy="12" r="10"></circle>
+                              <line x1="15" y1="9" x2="9" y2="15"></line>
+                              <line x1="9" y1="9" x2="15" y2="15"></line>
+                            </svg>
+                          </button>
+                        )}
+                        {(j.status === "completed" || j.status === "failed") && (
+                          <button onClick={() => handleDeleteJob(j.id)}
+                            title="Delete"
+                            className="action-btn action-btn-danger">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f43f5e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="3 6 5 6 21 6"></polyline>
+                              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                              <line x1="10" y1="11" x2="10" y2="17"></line>
+                              <line x1="14" y1="11" x2="14" y2="17"></line>
+                            </svg>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                  {jobs.length > 3 && (
+                    <Link href="/jobs" className="btn-ghost" style={{ display: "block", textAlign: "center", padding: "10px", marginTop: 12, fontSize: 11, textDecoration: "none" }}>
+                      View all {jobs.length} training jobs →
+                    </Link>
+                  )}
+                </>
+              )}
+            </div>
+
+          </div>
+        )}
+
+        {dashboardTab === "lineage" && (
+          /* Traceability Lineage Map */
+          <div style={{ display: "flex", flexDirection: "column", gap: 24, marginBottom: 32 }} className="animate-fadeIn">
+            {datasets.length === 0 ? (
+              <div className="vt-card" style={{ padding: 48, textAlign: "center" }}>
+                <span style={{ fontSize: 40 }}>🔗</span>
+                <h3 style={{ fontFamily: "'Comic Neue', cursive", fontSize: 18, fontWeight: "bold", color: "#ffffff", marginTop: 12 }}>No Datasets Found</h3>
+                <p style={{ fontSize: 12, color: "#a0a5c0", marginTop: 4 }}>You need to generate or upload a dataset first to see the lineage.</p>
+              </div>
+            ) : (
+              datasets.map((dataset) => {
+                const datasetJobs = jobs.filter((j) => j.dataset_id === dataset.id || j.dataset_id === dataset.name);
+                return (
+                  <div key={dataset.id} className="vt-card" style={{ padding: 24, border: "3px solid #000000", background: "#13141f" }}>
+                    {/* Dataset Header */}
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "2px solid #27293d", paddingBottom: 12, marginBottom: 16 }}>
+                      <div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <span style={{ fontSize: 16 }}>📁</span>
+                          <span style={{ fontFamily: "'Comic Neue', cursive", fontSize: 16, fontWeight: "bold", color: "#ffffff" }}>
+                            {dataset.name}
+                          </span>
+                          <Badge status={dataset.status} />
+                        </div>
+                        <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#a0a5c0", marginTop: 4 }}>
+                          ID: {dataset.id} · {dataset.row_count} rows · {dataset.file_format?.toUpperCase()}
+                        </div>
+                      </div>
+                      {dataset.quality_score && (
+                        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
+                          <span style={{ fontSize: "10px", fontFamily: "'JetBrains Mono', monospace", color: "#7a7f9a" }}>Quality Score</span>
+                          <span style={{ fontSize: 16, fontFamily: "'JetBrains Mono', monospace", fontWeight: "bold", color: scoreColor(dataset.quality_score) }}>
+                            {dataset.quality_score}%
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Children: Training Jobs */}
+                    <div style={{ paddingLeft: 20, borderLeft: "2px dashed #27293d", marginLeft: 10, display: "flex", flexDirection: "column", gap: 16 }}>
+                      {datasetJobs.length === 0 ? (
+                        <div style={{ padding: "12px 16px", background: "rgba(255,255,255,0.01)", border: "1px dashed #27293d", borderRadius: "8px", color: "#7a7f9a", fontSize: 11, fontFamily: "'Comic Neue', cursive" }}>
+                          No models fine-tuned from this dataset yet.
+                        </div>
+                      ) : (
+                        datasetJobs.map((job) => {
+                          const jobEvals = evaluations.filter((ev) => ev.training_job_id === job.id);
+                          return (
+                            <div key={job.id} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                              {/* Job Node Card */}
+                              <div className="vt-card" style={{ padding: 16, border: "2px solid #000000", background: "#0c0d12", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                <div>
+                                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                    <span style={{ fontSize: 14 }}>🧠</span>
+                                    <span style={{ fontFamily: "'Comic Neue', cursive", fontSize: 14, fontWeight: "bold", color: "#ffffff" }}>
+                                      {job.base_model?.split("/").pop()} Checkpoint
+                                    </span>
+                                    <Badge status={job.status} />
+                                  </div>
+                                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#7a7f9a", marginTop: 4 }}>
+                                    Job: {job.id.slice(0, 8)} · Epochs: {job.training_config?.epochs} · Rank: {job.training_config?.lora_r} · LR: {job.training_config?.learning_rate}
+                                  </div>
+                                </div>
+                                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                                  {job.hf_model_id && (
+                                    <span style={{ fontSize: "10px", fontFamily: "'JetBrains Mono', monospace", color: accent, border: `1px solid ${accent}`, padding: "2px 6px", borderRadius: "4px" }}>
+                                      HF Hubbed
+                                    </span>
+                                  )}
+                                  <button onClick={() => handlePreviewJob(job.id)} className="btn-ghost" style={{ padding: "4px 8px", fontSize: 10 }}>
+                                    Inspect Details
+                                  </button>
+                                </div>
+                              </div>
+
+                              {/* Nested Children: Evaluations */}
+                              <div style={{ paddingLeft: 24, borderLeft: `2px dashed ${accent}`, marginLeft: 16, display: "flex", flexDirection: "column", gap: 8 }}>
+                                {jobEvals.length === 0 ? (
+                                  <div style={{ padding: "8px 12px", background: "rgba(255,255,255,0.01)", border: "1px dashed #27293d", borderRadius: "6px", color: "#5d617a", fontSize: 10, fontFamily: "'Comic Neue', cursive" }}>
+                                    No evaluations run on this checkpoint yet.
+                                  </div>
+                                ) : (
+                                  jobEvals.map((ev) => (
+                                    <div key={ev.id} className="vt-card" style={{ padding: 12, border: "2px solid #000000", background: "#111219", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                      <div>
+                                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                          <span style={{ fontSize: 12 }}>🧪</span>
+                                          <span style={{ fontFamily: "'Comic Neue', cursive", fontSize: 12, fontWeight: "bold", color: "#ffffff" }}>
+                                            Benchmarked vs {datasets.find((d) => d.id === ev.dataset_id)?.name || "Test Set"}
+                                          </span>
+                                          <span style={{ fontSize: "9px", fontFamily: "'JetBrains Mono', monospace", textTransform: "uppercase", background: "#06b6d4", color: "#000", padding: "1px 6px", borderRadius: "3px", fontWeight: "bold" }}>
+                                            {ev.status}
+                                          </span>
+                                        </div>
+                                        {ev.metrics && (
+                                          <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#a0a5c0", marginTop: 4 }}>
+                                            {Object.entries(ev.metrics).slice(0, 3).map(([k, v]: any) => (
+                                              <span key={k} style={{ marginRight: 8 }}>
+                                                {k}: <strong style={{ color: "#22d3ee" }}>{typeof v === "number" ? v.toFixed(2) : String(v)}</strong>
+                                              </span>
+                                            ))}
+                                          </div>
+                                        )}
+                                      </div>
+                                      <Link href={`/evaluate?job_id=${job.id}`} className="btn-ghost" style={{ padding: "4px 8px", fontSize: 9, textDecoration: "none" }}>
+                                        View Metrics ↗
+                                      </Link>
+                                    </div>
+                                  ))
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })
                       )}
                     </div>
                   </div>
-                ))}
-                {jobs.length > 3 && (
-                  <Link href="/jobs" className="btn-ghost" style={{ display: "block", textAlign: "center", padding: "10px", marginTop: 12, fontSize: 11, textDecoration: "none" }}>
-                    View all {jobs.length} training jobs →
-                  </Link>
-                )}
-              </>
+                );
+              })
             )}
           </div>
+        )}
 
-        </div>
+        {dashboardTab === "admin" && adminStats && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 32, marginBottom: 32 }} className="animate-fadeIn">
+            {/* Stats Row */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 20 }}>
+              {[
+                { label: "Total Users", val: adminStats.summary.total_users, color: "#a0a5c0" },
+                { label: "Total Datasets", val: adminStats.summary.total_datasets, color: "#10b981" },
+                { label: "Total Jobs Run", val: adminStats.summary.total_jobs, color: accent },
+                { label: "Active Jobs", val: adminStats.summary.active_jobs_count, color: "#38bdf8" },
+                { label: "GPU Hours", val: `${adminStats.summary.total_gpu_hours}h`, color: "#a855f7" },
+                { label: "Total Cost", val: `$${adminStats.summary.total_cost_usd.toFixed(2)}`, color: "#eab308" },
+              ].map(stat => (
+                <div key={stat.label} className="vt-card" style={{ padding: 20, textAlign: "center", border: "2px solid #000" }}>
+                  <div style={{ fontSize: 10, fontFamily: "'JetBrains Mono', monospace", color: "#7a7f9a", textTransform: "uppercase", marginBottom: 6 }}>
+                    {stat.label}
+                  </div>
+                  <div style={{ fontSize: 22, fontFamily: "'JetBrains Mono', monospace", fontWeight: "bold", color: stat.color }}>
+                    {stat.val}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Audit Table */}
+            <div className="vt-card" style={{ padding: 24, border: "3px solid #000" }}>
+              <h3 style={{ fontFamily: "'Comic Neue', cursive", fontSize: 18, fontWeight: "bold", color: "#ffffff", marginBottom: 16 }}>
+                User Resource Consumption Audit
+              </h3>
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "'Comic Neue', cursive", fontSize: "13px" }}>
+                  <thead>
+                    <tr style={{ borderBottom: "2px solid #27293d", textAlign: "left", background: "rgba(255,255,255,0.02)" }}>
+                      <th style={{ padding: 12, color: "#ffffff" }}>User / Email</th>
+                      <th style={{ padding: 12, color: "#ffffff" }}>Joined</th>
+                      <th style={{ padding: 12, color: "#ffffff", textAlign: "center" }}>Role</th>
+                      <th style={{ padding: 12, color: "#ffffff", textAlign: "center" }}>Datasets</th>
+                      <th style={{ padding: 12, color: "#ffffff", textAlign: "center" }}>Jobs Run</th>
+                      <th style={{ padding: 12, color: "#ffffff", textAlign: "center" }}>GPU Hours</th>
+                      <th style={{ padding: 12, color: "#ffffff", textAlign: "right" }}>Total Cost</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {adminStats.users.map((user: any) => (
+                      <tr key={user.id} style={{ borderBottom: "1px solid #27293d" }}>
+                        <td style={{ padding: 12 }}>
+                          <div style={{ fontWeight: "bold", color: "#ffffff" }}>{user.full_name || "No name"}</div>
+                          <div style={{ fontSize: 10, fontFamily: "'JetBrains Mono', monospace", color: "#7a7f9a" }}>{user.email}</div>
+                        </td>
+                        <td style={{ padding: 12, color: "#a0a5c0", fontFamily: "monospace" }}>
+                          {user.created_at ? new Date(user.created_at).toLocaleDateString() : "-"}
+                        </td>
+                        <td style={{ padding: 12, textAlign: "center" }}>
+                          <span style={{
+                            fontSize: 9,
+                            fontFamily: "monospace",
+                            background: user.is_admin ? "rgba(255,92,54,0.15)" : "rgba(255,255,255,0.05)",
+                            color: user.is_admin ? accent : "#7a7f9a",
+                            border: `1px solid ${user.is_admin ? accent : "#27293d"}`,
+                            padding: "2px 6px",
+                            borderRadius: 4
+                          }}>
+                            {user.is_admin ? "ADMIN" : "USER"}
+                          </span>
+                        </td>
+                        <td style={{ padding: 12, textAlign: "center", color: "#ffffff", fontWeight: "bold" }}>
+                          {user.datasets_count}
+                        </td>
+                        <td style={{ padding: 12, textAlign: "center", color: "#ffffff", fontWeight: "bold" }}>
+                          {user.jobs_count}
+                        </td>
+                        <td style={{ padding: 12, textAlign: "center", color: "#a855f7", fontFamily: "monospace", fontWeight: "bold" }}>
+                          {user.total_gpu_hours}h
+                        </td>
+                        <td style={{ padding: 12, textAlign: "right", color: "#eab308", fontFamily: "monospace", fontWeight: "bold" }}>
+                          ${user.total_spent_usd.toFixed(2)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Quick Actions Grid */}
         <div style={{ marginTop: 40 }}>

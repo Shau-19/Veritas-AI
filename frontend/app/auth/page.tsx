@@ -25,7 +25,7 @@ function AuthForm() {
       } else {
         res = await api.login(form.email, form.password);
       }
-      auth.setToken(res.access_token, res.user_id);
+      auth.setToken(res.access_token, res.user_id, res.is_admin);
       sessionStorage.setItem("user_email", res.email);
       sessionStorage.setItem("user_id", res.user_id);
       router.push("/dashboard");

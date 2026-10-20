@@ -3,7 +3,16 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { auth, encryptApiKey, keyStore } from "@/lib/api";
 
-const PROVIDERS = [
+const PROVIDERS: {
+  id: string;
+  name: string;
+  logoUrl: string;
+  desc: string;
+  placeholder: string;
+  docsUrl: string;
+  required: boolean;
+  isFree?: boolean;
+}[] = [
   {
     id: "openai",
     name: "OpenAI",
@@ -21,6 +30,16 @@ const PROVIDERS = [
     placeholder: "sk-...",
     docsUrl: "https://platform.deepseek.com",
     required: false,
+  },
+  {
+    id: "groq",
+    name: "Groq",
+    logoUrl: "/groq_logo.png",
+    desc: "Free-tier LLM inference — fastest alternative to OpenAI (llama-3.3-70b)",
+    placeholder: "gsk_...",
+    docsUrl: "https://console.groq.com/keys",
+    required: false,
+    isFree: true,
   },
   {
     id: "huggingface",
@@ -114,6 +133,11 @@ function KeyRow({ provider, userId }: { provider: typeof PROVIDERS[0]; userId: s
           </div>
         </div>
         <div className="flex items-center gap-3">
+          {provider.isFree && (
+            <span className="text-[10px] font-mono font-bold text-black bg-green border border-black px-1.5 py-0.5 rounded-full shadow-[1px_1px_0px_0px_#000]">
+              free
+            </span>
+          )}
           {saved && (
             <span className="flex items-center gap-1.5 text-xs text-green font-mono font-bold">
               <span className="w-2 h-2 rounded-full bg-green border border-black" />
