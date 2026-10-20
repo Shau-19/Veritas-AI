@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     hf_token: str = ""
     openai_api_key: str = ""
     deepseek_api_key: str = ""
+    groq_api_key: str = ""
     access_token_expire_minutes: int = 1440
 
     class Config:

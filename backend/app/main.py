@@ -20,7 +20,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from app.core.config import settings
 from app.core.database import init_db
-from app.api.routes import auth, datasets, jobs, generate, structured, evaluations
+from app.api.routes import auth, datasets, jobs, generate, structured, evaluations, admin
 from app.api.routes import ingest, deploy
 
 access_logger = logging.getLogger("veritas.access")
@@ -28,6 +28,7 @@ access_logger = logging.getLogger("veritas.access")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Initialize DB (run DDL)
     await init_db()
     # Start ngrok tunnel for local dev so Colab notebooks can reach this backend
     from app.services.tunnel import start_tunnel
@@ -66,6 +67,7 @@ app.include_router(structured.router, prefix="/api/v1")
 app.include_router(evaluations.router, prefix="/api/v1")
 app.include_router(ingest.router, prefix="/api/v1")
 app.include_router(deploy.router, prefix="/api/v1")
+app.include_router(admin.router, prefix="/api/v1")
 
 
 @app.get("/health")
